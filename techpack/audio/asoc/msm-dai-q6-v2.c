@@ -5708,8 +5708,8 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 		   (mi2s_dai_data->rx_dai.mi2s_dai_data.bitwidth !=
 		    mi2s_dai_data->tx_dai.mi2s_dai_data.bitwidth)) {
 			dev_err(dai->dev, "%s: Error mismatch in HW params\n"
-				"Tx sample_rate = %u bit_width = %hu\n"
-				"Rx sample_rate = %u bit_width = %hu\n"
+				"Tx sample_rate = %u bit_width = %u\n"
+				"Rx sample_rate = %u bit_width = %u\n"
 				, __func__,
 				mi2s_dai_data->tx_dai.mi2s_dai_data.rate,
 				mi2s_dai_data->tx_dai.mi2s_dai_data.bitwidth,
@@ -10636,7 +10636,8 @@ static struct snd_soc_dai_driver msm_dai_q6_tdm_dai[] = {
 			.aif_name = "TERT_TDM_RX_0",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 				SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |
-				SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_352800,
+				SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_176400 |
+				SNDRV_PCM_RATE_352800,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE |
 				   SNDRV_PCM_FMTBIT_S24_LE |
 				   SNDRV_PCM_FMTBIT_S32_LE,
@@ -10657,7 +10658,8 @@ static struct snd_soc_dai_driver msm_dai_q6_tdm_dai[] = {
 			.aif_name = "TERT_TDM_RX_1",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 				SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |
-				SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_352800,
+				SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_176400 |
+				SNDRV_PCM_RATE_352800,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE |
 				   SNDRV_PCM_FMTBIT_S24_LE |
 				   SNDRV_PCM_FMTBIT_S32_LE,

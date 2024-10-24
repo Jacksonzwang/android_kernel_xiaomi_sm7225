@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/slab.h>
@@ -1335,10 +1336,6 @@ static int cam_convert_hw_idx_to_ife_hw_num(int hw_idx)
 				return CAM_ISP_IFE1_LITE_HW;
 			else if (hw_idx == 4)
 				return CAM_ISP_IFE2_LITE_HW;
-			else if (hw_idx == 5)
-				return CAM_ISP_IFE3_LITE_HW;
-			else if (hw_idx == 6)
-				return CAM_ISP_IFE4_LITE_HW;
 			break;
 		case CAM_CPAS_TITAN_170_V200:
 			if (hw_idx == 0)
@@ -2323,7 +2320,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_bus_rd(
 	}
 
 	if (j == CAM_IFE_HW_NUM_MAX || !vfe_acquire.vfe_bus_rd.rsrc_node) {
-		CAM_ERR(CAM_ISP, "Failed to acquire BUS RD for LEFT", i);
+		CAM_ERR(CAM_ISP, "Failed to acquire BUS RD for LEFT");
 		goto put_res;
 	}
 
@@ -2509,11 +2506,8 @@ static int cam_ife_mgr_acquire_hw_for_offline_ctx(
 	cam_ife_hw_mgr_preprocess_port(ife_ctx, in_port, &ipp_count,
 		&rdi_count, &ppp_count, &ife_rd_count, &lcr_count);
 
-	if ((!ipp_count && !lcr_count) || !ife_rd_count) {
-		CAM_ERR(CAM_ISP,
-			"Invalid %d BUS RD %d PIX %d LCR ports for FE ctx");
+	if ((!ipp_count && !lcr_count) || !ife_rd_count)
 		return -EINVAL;
-	}
 
 	if (rdi_count || ppp_count) {
 		CAM_ERR(CAM_ISP,
@@ -5843,7 +5837,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 		if (blob_size < sizeof(struct cam_isp_csid_qcfa_config)) {
 			CAM_ERR(CAM_ISP,
-				"Invalid qcfa blob size %u expected %u",
+				"Invalid qcfa blob size %u expected %lu",
 				blob_size,
 				sizeof(struct cam_isp_csid_qcfa_config));
 			return -EINVAL;
@@ -5896,7 +5890,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		struct cam_isp_vfe_out_config *vfe_out_config;
 
 		if (blob_size < sizeof(struct cam_isp_vfe_out_config)) {
-			CAM_ERR(CAM_ISP, "Invalid blob size %u",
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
 				blob_size,
 				sizeof(struct cam_isp_vfe_out_config));
 			return -EINVAL;
@@ -5908,8 +5902,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 			vfe_out_config->num_ports == 0) {
 			CAM_ERR(CAM_ISP,
 				"Invalid num_ports:%u in vfe out config",
-				vfe_out_config->num_ports,
-				CAM_IFE_HW_OUT_RES_MAX);
+				vfe_out_config->num_ports);
 			return -EINVAL;
 		}
 
@@ -5947,7 +5940,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 		if (blob_size < sizeof(struct cam_isp_csid_epd_config)) {
 			CAM_ERR(CAM_ISP,
-				"Invalid epd config blob size %u expected %u",
+				"Invalid epd config blob size %u expected %lu",
 				blob_size,
 				sizeof(struct cam_isp_csid_epd_config));
 			return -EINVAL;
@@ -5963,7 +5956,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		struct cam_isp_sensor_config *csid_dim_config;
 
 		if (blob_size < sizeof(struct cam_isp_sensor_config)) {
-			CAM_ERR(CAM_ISP, "Invalid blob size %zu expected %zu",
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
 				blob_size,
 				sizeof(struct cam_isp_sensor_config));
 			return -EINVAL;
@@ -6538,7 +6531,7 @@ static int cam_ife_mgr_user_dump_hw(
 		true);
 	if (rc) {
 		CAM_ERR(CAM_ISP,
-			"Dump failed req: %lld handle %u offset %u",
+			"Dump failed req: %lld handle %u offset %zu",
 			dump_args->request_id,
 			dump_args->buf_handle,
 			dump_args->offset);
@@ -7213,7 +7206,8 @@ static void cam_ife_mgr_ctx_irq_dump(struct cam_ife_hw_mgr_ctx *ctx)
 
 static int cam_ife_hw_mgr_check_irq_for_dual_vfe(
 	struct cam_ife_hw_mgr_ctx            *ife_hw_mgr_ctx,
-	uint32_t                              hw_event_type)
+	uint32_t                              hw_event_type,
+	bool                                  detect_mismatch)
 {
 	int32_t                               rc = -1;
 	uint32_t                             *event_cnt = NULL;
@@ -7249,12 +7243,12 @@ static int cam_ife_hw_mgr_check_irq_for_dual_vfe(
 		return rc;
 	}
 
-	if ((event_cnt[master_hw_idx] &&
+	if (detect_mismatch && ((event_cnt[master_hw_idx] &&
 		((int)(event_cnt[master_hw_idx] - event_cnt[slave_hw_idx]) > 1
 		)) ||
 		(event_cnt[slave_hw_idx] &&
 		((int)(event_cnt[slave_hw_idx] - event_cnt[master_hw_idx]) > 1
-		))) {
+		)))) {
 
 		CAM_ERR_RATE_LIMIT(CAM_ISP,
 			"One of the VFE could not generate hw event %d master[%d] core_cnt %d slave[%d] core_cnt %d",
@@ -7312,7 +7306,11 @@ static int cam_ife_hw_mgr_handle_hw_epoch(
 	case CAM_ISP_HW_VFE_IN_CAMIF:
 		ife_hw_mgr_ctx->epoch_cnt[event_info->hw_idx]++;
 		rc = cam_ife_hw_mgr_check_irq_for_dual_vfe(ife_hw_mgr_ctx,
-			CAM_ISP_HW_EVENT_EPOCH);
+			CAM_ISP_HW_EVENT_SOF, false);
+		if (rc)
+			break;
+		rc = cam_ife_hw_mgr_check_irq_for_dual_vfe(ife_hw_mgr_ctx,
+			CAM_ISP_HW_EVENT_EPOCH, true);
 		if (!rc) {
 			epoch_done_event_data.frame_id_meta =
 				event_info->th_reg_val;
@@ -7369,7 +7367,7 @@ static int cam_ife_hw_mgr_handle_hw_sof(
 	case CAM_ISP_HW_VFE_IN_RD:
 		ife_hw_mgr_ctx->sof_cnt[event_info->hw_idx]++;
 		rc = cam_ife_hw_mgr_check_irq_for_dual_vfe(ife_hw_mgr_ctx,
-			CAM_ISP_HW_EVENT_SOF);
+			CAM_ISP_HW_EVENT_SOF, true);
 		if (!rc) {
 			if (ife_hw_mgr_ctx->is_offline)
 				cam_ife_hw_mgr_get_offline_sof_timestamp(
@@ -7444,7 +7442,7 @@ static int cam_ife_hw_mgr_handle_hw_eof(
 	case CAM_ISP_HW_VFE_IN_CAMIF:
 		ife_hw_mgr_ctx->eof_cnt[event_info->hw_idx]++;
 		rc = cam_ife_hw_mgr_check_irq_for_dual_vfe(ife_hw_mgr_ctx,
-			CAM_ISP_HW_EVENT_EOF);
+			CAM_ISP_HW_EVENT_EOF, true);
 		if (!rc) {
 			ife_hw_irq_eof_cb(ife_hw_mgr_ctx->common.cb_priv,
 				CAM_ISP_HW_EVENT_EOF, &eof_done_event_data);

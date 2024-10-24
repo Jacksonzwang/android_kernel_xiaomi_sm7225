@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/kernel.h>
@@ -253,7 +254,7 @@ static int32_t cam_sensor_get_io_buffer(
 		if ((rc < 0) || (!buf_addr)) {
 			CAM_ERR(CAM_SENSOR,
 				"invalid buffer, rc: %d, buf_addr: %pK",
-				rc, buf_addr);
+				rc, (void *)buf_addr);
 			return -EINVAL;
 		}
 		CAM_DBG(CAM_SENSOR,
@@ -262,7 +263,7 @@ static int32_t cam_sensor_get_io_buffer(
 		if (io_cfg->offsets[0] >= buf_size) {
 			CAM_ERR(CAM_SENSOR,
 				"invalid size:io_cfg->offsets[0]: %d, buf_size: %d",
-				io_cfg->offsets[0], buf_size);
+				io_cfg->offsets[0], (int)buf_size);
 			return -EINVAL;
 		}
 		i2c_settings->read_buff =
@@ -637,8 +638,8 @@ int cam_sensor_i2c_command_parser(
 
 				if (tot_size > (remain_len - byte_cnt)) {
 					CAM_ERR(CAM_SENSOR,
-						"Not enough buffer provided %d, %d, %d",
-						tot_size, remain_len, byte_cnt);
+						"Not enough buffer provided %ld, %d, %d",
+						tot_size, (int)remain_len, (int)byte_cnt);
 					rc = -EINVAL;
 					goto end;
 				}
@@ -678,8 +679,8 @@ int cam_sensor_i2c_command_parser(
 
 				if (tot_size > (remain_len - byte_cnt)) {
 					CAM_ERR(CAM_SENSOR,
-						"Not enough buffer provided %d, %d, %d",
-						tot_size, remain_len, byte_cnt);
+						"Not enough buffer provided %ld, %d, %d",
+						tot_size, (int)remain_len, (int)byte_cnt);
 					rc = -EINVAL;
 					goto end;
 				}
@@ -1052,6 +1053,31 @@ int32_t msm_camera_fill_vreg_params(
 			if (j == num_vreg)
 				power_setting[i].seq_val = INVALID_VREG;
 			break;
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 start*/
+		case SENSOR_VREG_LDO:
+                            for (j = 0; j < num_vreg; j++) {
+
+				if (!strcmp(soc_info->rgltr_name[j],
+					"vreg_ldo")) {
+					CAM_DBG(CAM_SENSOR,
+						"i:%d j:%d VREG_LDO", i, j);
+					power_setting[i].seq_val = j;
+
+					if (VALIDATE_VOLTAGE(
+						soc_info->rgltr_min_volt[j],
+						soc_info->rgltr_max_volt[j],
+						power_setting[i].config_val)) {
+						soc_info->rgltr_min_volt[j] =
+						soc_info->rgltr_max_volt[j] =
+						power_setting[i].config_val;
+					}
+					break;
+				}
+			}
+			if (j == num_vreg)
+				power_setting[i].seq_val = INVALID_VREG;
+			break;
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 end*/
 		default:
 			break;
 		}
@@ -1982,6 +2008,9 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 		case SENSOR_VAF_PWDM:
 		case SENSOR_CUSTOM_REG1:
 		case SENSOR_CUSTOM_REG2:
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 start*/
+		case SENSOR_VREG_LDO:
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 end*/
 			if (power_setting->seq_val == INVALID_VREG)
 				break;
 
@@ -2098,6 +2127,9 @@ power_up_failed:
 		case SENSOR_VAF_PWDM:
 		case SENSOR_CUSTOM_REG1:
 		case SENSOR_CUSTOM_REG2:
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 start*/
+		case SENSOR_VREG_LDO:
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 end*/
 			if (power_setting->seq_val < num_vreg) {
 				CAM_DBG(CAM_SENSOR, "Disable Regulator");
 				vreg_idx = power_setting->seq_val;
@@ -2266,6 +2298,9 @@ int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 		case SENSOR_VAF_PWDM:
 		case SENSOR_CUSTOM_REG1:
 		case SENSOR_CUSTOM_REG2:
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 start*/
+		case SENSOR_VREG_LDO:
+/*cuixiaojie@xiaomi.com add ncp163 1.95v-2v 2020-09-07 end*/
 			if (pd->seq_val == INVALID_VREG)
 				break;
 
